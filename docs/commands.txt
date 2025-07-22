@@ -1,0 +1,60 @@
+# 1. Connect to AWS RDS PostgreSQL Instance
+psql -h database-1.c5d2abh4bx8o.ap-south-1.rds.amazonaws.com -U postgres -d postgres
+# Connect to your RDS PostgreSQL instance using the master user.
+
+# 2. Create users table and insert sample data
+# (Executed inside psql)
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  name TEXT,
+  email TEXT
+);
+INSERT INTO users (name, email) VALUES
+('Alice', 'alice@example.com'),
+('Bob', 'bob@example.com');
+# Create a table and insert sample rows for CDC capture.
+
+# 3. (Attempted) Create a replication user (RDS does not allow this)
+CREATE ROLE cdc_user WITH REPLICATION LOGIN PASSWORD 'cdc_pass';
+# Attempted to create a replication user for Debezium (not allowed on RDS).
+
+# 4. Create a regular user (optional, not used for CDC)
+CREATE ROLE cdc_user WITH LOGIN PASSWORD 'cdc_pass';
+# Created a regular user (not used for CDC, as RDS restricts replication roles).
+
+# 5. Install wget (if not present)
+brew install wget
+# Install wget utility for downloading files (macOS/Homebrew).
+
+# 6. Download Debezium PostgreSQL Connector (latest available)
+curl -L "https://www.apache.org/dyn/closer.lua/pulsar/pulsar-4.0.5/connectors/pulsar-io-debezium-postgres-4.0.5.nar?action=download" -o connectors/pulsar-io-debezium-postgres-4.0.5.nar
+# Download the Debezium PostgreSQL connector for Pulsar.
+
+# 7. Start Apache Pulsar in Docker
+# (Example command, may differ depending on your run)
+docker run -d --name pulsar-cdc -p 6650:6650 -p 8080:8080 apachepulsar/pulsar:3.2.0 bin/pulsar standalone
+# Start Pulsar in standalone mode using Docker.
+
+# 8. Copy connectors and deploy directories into the running Pulsar Docker container
+docker cp ./connectors pulsar-cdc:/pulsar/
+docker cp ./deploy pulsar-cdc:/pulsar/
+# Copy the Debezium connector and deployment YAML into the running container.
+
+# 9. Exec into the Pulsar Docker container
+docker exec -it pulsar-cdc /bin/bash
+# Open a shell in the running Pulsar container.
+
+# 10. Install PostgreSQL client
+docker exec -u root -it pulsar-cdc apt-get update
+docker exec -u root -it pulsar-cdc apt-get install -y postgresql-client
+
+# 11. Deploy the Debezium PostgreSQL source connector (inside container)
+docker exec -it pulsar-cdc bin/pulsar-admin sources create --source-config-file /pulsar/deploy/debezium-postgres-source.yaml
+# Deploy the Debezium source connector using the provided YAML.
+
+# 12. Verify the connector is running
+docker exec -it pulsar-cdc bin/pulsar-admin sources status --name postgres-cdc1
+
+# 13. Run the consumer script
+source venv/bin/activate
+python consume.py

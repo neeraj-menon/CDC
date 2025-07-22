@@ -1,0 +1,17 @@
+tenant: public
+namespace: default
+name: postgres-cdc1
+archive: connectors/pulsar-io-debezium-postgres-3.2.0.nar
+topicName: persistent://public/default/db-changes
+parallelism: 1
+configs:
+  database.hostname: database-1.c5d2abh4bx8o.ap-south-1.rds.amazonaws.com
+  database.port: "5432"
+  database.user: postgres
+  database.password: postgres123
+  database.dbname: postgres
+  database.server.name: rds-pg
+  database.include.schema.changes: "true"
+  plugin.name: pgoutput
+  slot.name: cdc_slot
+  snapshot.mode: initial
