@@ -1,0 +1,32 @@
+version: '3.7'
+services:
+  pulsar:
+    image: apachepulsar/pulsar:3.2.0
+    container_name: pulsar-cdc
+    command: bin/pulsar standalone
+    ports:
+      - "6650:6650"
+      - "8080:8080"
+    volumes:
+      - ./connectors:/pulsar/connectors
+      - ./deploy:/pulsar/deploy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/admin/v2/clusters"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  connector-init:
+    image: apachepulsar/pulsar:3.2.0
+    depends_on:
+      pulsar:
+        condition: service_healthy
+    volumes:
+      - ./deploy:/pulsar/deploy
+      - ./connectors:/pulsar/connectors
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "bin/pulsar-admin sources create --source-config-file /pulsar/deploy/debezium-postgres-source.yaml && sleep 10"
+    environment:
+      PULSAR_ADMIN_URL: http://pulsar-cdc:8080
+    network_mode: service:pulsar

@@ -1,0 +1,47 @@
+version: '3'
+services:
+  # Pulsar standalone service
+  pulsar:
+    image: apachepulsar/pulsar:2.10.1
+    container_name: pulsar
+    ports:
+      - "6650:6650"  # Pulsar broker port
+      - "8080:8080"  # Pulsar Web UI port
+    environment:
+      - PULSAR_MEM=-Xms512m -Xmx512m -XX:MaxDirectMemorySize=1g
+    command: >
+      /bin/bash -c "bin/apply-config-from-env.py conf/standalone.conf && bin/pulsar standalone"
+    volumes:
+      - pulsar_data:/pulsar/data
+      - pulsar_conf:/pulsar/conf
+    networks:
+      - pulsar-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bin/pulsar-admin", "brokers", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Pulsar Manager (optional web UI for management)
+  pulsar-manager:
+    image: apachepulsar/pulsar-manager:v0.3.0
+    container_name: pulsar-manager
+    ports:
+      - "9527:9527"  # Pulsar Manager UI port
+    environment:
+      - SPRING_CONFIGURATION_FILE=/pulsar-manager/pulsar-manager/application.properties
+    depends_on:
+      - pulsar
+    networks:
+      - pulsar-net
+    restart: unless-stopped
+
+volumes:
+  pulsar_data:
+  pulsar_conf:
+
+networks:
+  pulsar-net:
+    driver: bridge
