@@ -6,7 +6,9 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("webhook_trigger")
 
-WEBHOOK_URL = os.getenv('WEBHOOK_URL', 'http://localhost:5001/webhook')  # Default or configurable
+# Production webhook URL for device-event-check workflow
+WEBHOOK_URL = 'https://activi.ai/api/v1/webhooks/cdc-test-webhook'
+WEBHOOK_SECRET = 'cdc-test-webhook-secret'
 
 def trigger_webhook(payload, url=None, timeout=5):
     """
@@ -19,8 +21,12 @@ def trigger_webhook(payload, url=None, timeout=5):
         bool: True if webhook was triggered successfully, False otherwise.
     """
     target_url = url or WEBHOOK_URL
+    headers = {}
+    webhook_secret = WEBHOOK_SECRET
+    if webhook_secret:
+        headers['X-Webhook-Secret'] = webhook_secret
     try:
-        response = requests.post(target_url, json=payload, timeout=timeout)
+        response = requests.post(target_url, json=payload, timeout=timeout, headers=headers)
         response.raise_for_status()
         logger.info(f"Webhook triggered successfully: {response.status_code}")
         return True

@@ -14,7 +14,9 @@ def main():
     print(f"Subscribed to {TOPIC} as {SUBSCRIPTION}")
     try:
         while True:
-            msg = consumer.receive(timeout_millis=100000)
+            # msg = consumer.receive(timeout_millis=100000)
+            msg = consumer.receive()
+
             try:
                 payload = msg.data().decode('utf-8')
                 print(f"Received message from Pulsar: {payload}")
