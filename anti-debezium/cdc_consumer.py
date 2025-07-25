@@ -57,11 +57,23 @@ def consume_wal(msg):
     try:
         # Parse the WAL message
         data = json.loads(msg.payload)
+        
+        # Skip transaction control messages (BEGIN/COMMIT)
+        if isinstance(data, dict) and data.get('action') in ('B', 'C'):
+            print(f"Skipping transaction control message: {data.get('action')}")
+            msg.cursor.send_feedback(flush_lsn=msg.data_start)
+            return
+
+        # Process only actual data changes
         print(f"Received WAL message: {json.dumps(data, indent=2)}")
 
         # Support both wal2json formats: with 'change' key (list) or flat dict
         changes = data.get('change') if isinstance(data, dict) and 'change' in data else [data]
         for change in changes:
+            # Skip if it's a transaction control message in the change array
+            if isinstance(change, dict) and change.get('action') in ('B', 'C'):
+                continue
+                
             print(f"Processing change: {json.dumps(change, indent=2)}")
             
             # For UPDATE operations, we need to infer changed columns by comparing identity with columns
